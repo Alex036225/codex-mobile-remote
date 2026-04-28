@@ -54,7 +54,45 @@
 - 愿意接受这是一个偏工程化、偏私有化的桥接工具
 - 希望先解决“能稳定用”，再慢慢打磨更完整的移动端体验
 
-## 最简单的使用方式
+## 最简单的使用方式：单文件脚本
+
+如果你只想给别人一个文件，直接使用：
+
+```text
+dist/codex-mobile-remote.sh
+```
+
+运行方式：
+
+```bash
+chmod +x codex-mobile-remote.sh
+./codex-mobile-remote.sh
+```
+
+脚本会自动完成：
+
+- 释放完整项目到本机
+- 检查 Node.js 环境
+- 安装 npm 依赖
+- 让用户手动输入安装目录
+- 让用户手动输入手机网页端口
+- 让用户手动输入手机登录口令，或者留空自动生成
+- 启动后台服务
+- 输出手机访问地址和登录口令
+
+运行结束后会看到类似：
+
+```text
+手机访问地址：
+http://192.168.0.116:8088
+
+手机登录口令：
+你输入或自动生成的口令
+```
+
+这就是最推荐给普通用户的方式。
+
+## 双击 App 使用方式
 
 ### 1. 下载项目
 
@@ -174,6 +212,7 @@ cat .remote-token
 ```text
 codex-mobile-remote/
 ├── Codex Mobile Remote.app  双击启动的小程序
+├── dist/           单文件自解压安装脚本
 ├── public/         手机网页前端
 ├── server/         本地桥接服务
 ├── scripts/        启停、OCR、点击、AppleScript 辅助脚本
@@ -200,6 +239,22 @@ chmod +x scripts/*.sh
 ```
 
 启动后如果还没有 `.remote-token`，服务会自动生成。
+
+## 重新生成单文件脚本
+
+如果你改了项目代码，需要重新打包 `dist/codex-mobile-remote.sh`：
+
+```bash
+./scripts/build-single-script.sh
+```
+
+它会把当前项目重新压进一个自解压脚本里。生成时会自动排除：
+
+- `.git`
+- `node_modules`
+- `.remote-token`
+- `.vnc-password`
+- `.cmr-config`
 
 ## 启动方式
 
