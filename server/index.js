@@ -52,11 +52,13 @@ if (process.argv.includes("--check")) {
 }
 
 app.get("/login", (req, res) => {
-  if (getSession(req)) return res.redirect("/");
+  if (isAuthDisabled() || getSession(req)) return res.redirect("/");
   res.sendFile(path.join(publicDir, "login.html"));
 });
 
 app.post("/api/login", (req, res) => {
+  if (isAuthDisabled()) return res.json({ ok: true, authDisabled: true });
+
   const submitted = String(req.body?.token || "");
   if (!safeEqual(submitted, accessToken)) {
     return res.status(401).json({ ok: false, error: "访问口令不正确" });
@@ -281,7 +283,7 @@ app.use(requireAuth, express.static(publicDir));
 
 const server = app.listen(port, "0.0.0.0", () => {
   console.log(`Codex Mobile Remote listening on http://localhost:${port}`);
-  console.log(`Access token: ${accessToken}`);
+  console.log(isAuthDisabled() ? "Access token: disabled" : `Access token: ${accessToken}`);
   console.log(`VNC target: ${vncHost}:${vncPort}`);
 });
 
@@ -522,12 +524,16 @@ function delay(ms) {
 }
 
 function getAccessToken() {
-  if (process.env.REMOTE_TOKEN) return process.env.REMOTE_TOKEN;
+  if (process.env.REMOTE_TOKEN !== undefined) return process.env.REMOTE_TOKEN.trim();
   if (fs.existsSync(tokenFile)) return fs.readFileSync(tokenFile, "utf8").trim();
 
   const token = crypto.randomBytes(18).toString("base64url");
   fs.writeFileSync(tokenFile, `${token}\n`, { mode: 0o600 });
   return token;
+}
+
+function isAuthDisabled() {
+  return accessToken === "";
 }
 
 function runCodexAutomation(command, argument = "") {
@@ -655,6 +661,7 @@ function compactAxText(raw) {
 }
 
 function requireAuth(req, res, next) {
+  if (isAuthDisabled()) return next();
   if (getSession(req)) return next();
   if (req.path.startsWith("/api/")) {
     return res.status(401).json({ ok: false, error: "not_authenticated" });
