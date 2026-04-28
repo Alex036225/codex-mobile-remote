@@ -122,6 +122,43 @@ read_config_value() {
   fi
 }
 
+prepend_path_dir() {
+  local dir="$1"
+  if [ -d "$dir" ]; then
+    case ":$PATH:" in
+      *":$dir:"*) ;;
+      *) PATH="$dir:$PATH" ;;
+    esac
+  fi
+}
+
+bootstrap_node_path() {
+  export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+  prepend_path_dir "$HOME/.volta/bin"
+  prepend_path_dir "$HOME/.fnm"
+  prepend_path_dir "$HOME/Library/pnpm"
+
+  local dir discovered shell_path
+  for dir in "$HOME/.nvm/versions/node"/*/bin "$HOME/.local/share/fnm/node-versions"/*/installation/bin; do
+    prepend_path_dir "$dir"
+  done
+
+  for shell_path in /bin/zsh /bin/bash; do
+    if [ -x "$shell_path" ]; then
+      discovered="$("$shell_path" -lic 'command -v node 2>/dev/null || true' 2>/dev/null | tail -n 1)"
+      if [ -n "$discovered" ]; then
+        prepend_path_dir "$(dirname "$discovered")"
+      fi
+      discovered="$("$shell_path" -lic 'command -v npm 2>/dev/null || true' 2>/dev/null | tail -n 1)"
+      if [ -n "$discovered" ]; then
+        prepend_path_dir "$(dirname "$discovered")"
+      fi
+    fi
+  done
+
+  export PATH
+}
+
 cleanup() {
   if [ -n "${service_pid:-}" ] && kill -0 "$service_pid" 2>/dev/null; then
     kill "$service_pid" 2>/dev/null || true
@@ -139,15 +176,16 @@ ensure_project() {
 }
 
 ensure_node() {
+  bootstrap_node_path
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-    dialog "没有检测到 Node.js / npm。请先安装 Node.js 20 或更高版本，然后再打开这个 App。"
+    dialog "没有检测到 Node.js / npm。App 已尝试寻找 Homebrew、nvm、Volta 和 fnm 里的 Node。\n\n如果你已经安装 Node，请确认它在 /opt/homebrew/bin、/usr/local/bin，或你的登录 shell 能通过 command -v node 找到。\n\n也可以安装 Node.js 20 或更高版本后再打开这个 App。"
     /usr/bin/open "https://nodejs.org/"
     exit 1
   fi
 
   node_major="$(node -p 'process.versions.node.split(".")[0]')"
   if [ "$node_major" -lt 20 ]; then
-    dialog "当前 Node.js 版本是 $(node -v)，需要 Node.js 20 或更高版本。"
+    dialog "当前 Node.js 版本是 $(node -v)，路径是 $(command -v node)。需要 Node.js 20 或更高版本。"
     /usr/bin/open "https://nodejs.org/"
     exit 1
   fi

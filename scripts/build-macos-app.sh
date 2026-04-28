@@ -8,7 +8,7 @@ SRC_APP="$ROOT_DIR/$APP_NAME"
 OUT_APP="$DIST_DIR/$APP_NAME"
 RESOURCES_DIR="$OUT_APP/Contents/Resources"
 PAYLOAD="$RESOURCES_DIR/codex-mobile-remote.tar.gz"
-ZIP_FILE="$DIST_DIR/Codex Mobile Remote.app.zip"
+ZIP_FILE="$DIST_DIR/Codex-Mobile-Remote.app.zip"
 
 cd "$ROOT_DIR"
 mkdir -p "$DIST_DIR"

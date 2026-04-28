@@ -59,7 +59,7 @@
 如果你想把它当成一个普通 macOS 小软件用，下载：
 
 ```text
-GitHub Releases -> Codex.Mobile.Remote.app.zip
+GitHub Releases -> Codex-Mobile-Remote.app.zip
 ```
 
 最新版本下载页：
