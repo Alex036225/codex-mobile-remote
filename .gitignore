@@ -3,3 +3,4 @@ node_modules/
 .vnc-password
 .cmr-config
 .DS_Store
+dist/*.app/

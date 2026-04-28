@@ -2,15 +2,44 @@
 set -euo pipefail
 
 APP_EXEC_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(cd "$APP_EXEC_DIR/../../.." && pwd)"
+BUNDLE_DIR="$(cd "$APP_EXEC_DIR/../.." && pwd)"
+RESOURCE_PAYLOAD="$BUNDLE_DIR/Contents/Resources/codex-mobile-remote.tar.gz"
+INSTALL_ROOT="$HOME/Library/Application Support/Codex Mobile Remote"
+
+prepare_root_dir() {
+  if [ -f "$RESOURCE_PAYLOAD" ]; then
+    mkdir -p "$INSTALL_ROOT"
+    tar -xzf "$RESOURCE_PAYLOAD" -C "$INSTALL_ROOT"
+    ROOT_DIR="$INSTALL_ROOT"
+  else
+    ROOT_DIR="$(cd "$APP_EXEC_DIR/../../.." && pwd)"
+  fi
+}
+
+prepare_root_dir
 cd "$ROOT_DIR"
 
 title="Codex Mobile Remote"
+log_file="/tmp/codex-mobile-remote-app.log"
+service_pid=""
 
 dialog() {
   /usr/bin/osascript - "$title" "$1" <<'OSA'
 on run argv
   display dialog (item 2 of argv) buttons {"好的"} default button "好的" with title (item 1 of argv)
+end run
+OSA
+}
+
+ask_continue() {
+  /usr/bin/osascript - "$title" "$1" <<'OSA'
+on run argv
+  try
+    set picked to button returned of (display dialog (item 2 of argv) buttons {"退出", "重新设置", "继续启动"} default button "继续启动" cancel button "退出" with title (item 1 of argv))
+    return picked
+  on error number -128
+    return "退出"
+  end try
 end run
 OSA
 }
@@ -28,11 +57,28 @@ end run
 OSA
 }
 
-choose_open() {
+choose_token_mode() {
+  /usr/bin/osascript - "$title" <<'OSA'
+on run argv
+  try
+    set picked to button returned of (display dialog "设置手机访问口令。\n\n- 无口令：打开网页直接进入，适合只在本机或可信网络使用。\n- 自动生成：更安全，App 会显示给你。\n- 手动输入：自己设一个固定口令。" buttons {"无口令", "自动生成", "手动输入"} default button "自动生成" with title (item 1 of argv))
+    return picked
+  on error number -128
+    return "__CANCEL__"
+  end try
+end run
+OSA
+}
+
+control_dialog() {
   /usr/bin/osascript - "$title" "$1" <<'OSA'
 on run argv
-  set picked to button returned of (display dialog (item 2 of argv) buttons {"不用", "打开本机页面"} default button "打开本机页面" with title (item 1 of argv))
-  return picked
+  try
+    set picked to button returned of (display dialog (item 2 of argv) buttons {"停止并退出", "显示地址", "打开本机页面"} default button "打开本机页面" cancel button "停止并退出" with title (item 1 of argv))
+    return picked
+  on error number -128
+    return "停止并退出"
+  end try
 end run
 OSA
 }
@@ -43,118 +89,229 @@ cancel_if_needed() {
   fi
 }
 
-if [ ! -f "package.json" ] || [ ! -d "server" ]; then
-  dialog "没有找到项目文件。请把这个 App 放在 codex-mobile-remote 项目根目录里再双击。"
-  exit 1
-fi
-
-if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-  dialog "没有检测到 Node.js / npm。请先安装 Node.js 20 或更高版本，然后再打开这个 App。"
-  /usr/bin/open "https://nodejs.org/"
-  exit 1
-fi
-
-node_major="$(node -p 'process.versions.node.split(".")[0]')"
-if [ "$node_major" -lt 20 ]; then
-  dialog "当前 Node.js 版本是 $(node -v)，需要 Node.js 20 或更高版本。"
-  /usr/bin/open "https://nodejs.org/"
-  exit 1
-fi
-
-default_port="8088"
-if [ -f ".cmr-config" ]; then
-  existing_port="$(sed -n 's/^PORT=//p' .cmr-config | head -n 1)"
-  if [ -n "$existing_port" ]; then
-    default_port="$existing_port"
-  fi
-fi
-
-default_codex_app="/Applications/Codex.app"
-if [ -f ".cmr-config" ]; then
-  existing_codex_app="$(sed -n 's/^CODEX_DESKTOP_APP=//p' .cmr-config | head -n 1 | sed \"s/^'//; s/'$//\")"
-  if [ -n "$existing_codex_app" ]; then
-    default_codex_app="$existing_codex_app"
-  fi
-fi
-
-port="$(prompt "手机网页端口。一般保持默认 8088 即可。" "$default_port")"
-cancel_if_needed "$port"
-if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
-  dialog "端口必须是 1 到 65535 之间的数字。"
-  exit 1
-fi
-
-default_token=""
-if [ -f ".remote-token" ]; then
-  default_token="$(cat .remote-token)"
-fi
-
-token="$(prompt "手机登录口令。可以自己输入，也可以留空让 App 自动生成。" "$default_token")"
-cancel_if_needed "$token"
-if [ -z "$token" ]; then
-  token="$(node --input-type=module -e 'import crypto from "node:crypto"; console.log(crypto.randomBytes(18).toString("base64url"))')"
-fi
-
-codex_app="$(prompt "Codex.app 路径。默认会自动寻找；如果你装在别处，可以在这里填写。" "$default_codex_app")"
-cancel_if_needed "$codex_app"
-
 shell_quote() {
   printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
 }
 
-printf '%s\n' "$token" > .remote-token
-chmod 600 .remote-token
+random_token() {
+  node --input-type=module -e 'import crypto from "node:crypto"; console.log(crypto.randomBytes(18).toString("base64url"))'
+}
 
-cat > .cmr-config <<EOF
+mac_ip() {
+  local ip=""
+  if command -v ipconfig >/dev/null 2>&1; then
+    ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
+    if [ -z "$ip" ]; then
+      ip="$(ipconfig getifaddr en1 2>/dev/null || true)"
+    fi
+  fi
+  printf "%s" "$ip"
+}
+
+read_config_value() {
+  local key="$1"
+  local fallback="$2"
+  local value=""
+  if [ -f ".cmr-config" ]; then
+    value="$(sed -n "s/^${key}=//p" .cmr-config | head -n 1 | sed "s/^'//; s/'$//")"
+  fi
+  if [ -n "$value" ]; then
+    printf "%s" "$value"
+  else
+    printf "%s" "$fallback"
+  fi
+}
+
+cleanup() {
+  if [ -n "${service_pid:-}" ] && kill -0 "$service_pid" 2>/dev/null; then
+    kill "$service_pid" 2>/dev/null || true
+    wait "$service_pid" 2>/dev/null || true
+  fi
+  ./scripts/stop.sh >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
+
+ensure_project() {
+  if [ ! -f "package.json" ] || [ ! -d "server" ]; then
+    dialog "没有找到项目文件。请把这个 App 放在 codex-mobile-remote 项目根目录里再双击。"
+    exit 1
+  fi
+}
+
+ensure_node() {
+  if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
+    dialog "没有检测到 Node.js / npm。请先安装 Node.js 20 或更高版本，然后再打开这个 App。"
+    /usr/bin/open "https://nodejs.org/"
+    exit 1
+  fi
+
+  node_major="$(node -p 'process.versions.node.split(".")[0]')"
+  if [ "$node_major" -lt 20 ]; then
+    dialog "当前 Node.js 版本是 $(node -v)，需要 Node.js 20 或更高版本。"
+    /usr/bin/open "https://nodejs.org/"
+    exit 1
+  fi
+}
+
+setup_wizard() {
+  local default_port default_codex_app port token_mode token codex_app
+  default_port="$(read_config_value "PORT" "8088")"
+  default_codex_app="$(read_config_value "CODEX_DESKTOP_APP" "/Applications/Codex.app")"
+
+  port="$(prompt "手机网页端口。一般保持默认 8088 即可。" "$default_port")"
+  cancel_if_needed "$port"
+  if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+    dialog "端口必须是 1 到 65535 之间的数字。"
+    exit 1
+  fi
+
+  token_mode="$(choose_token_mode)"
+  cancel_if_needed "$token_mode"
+  case "$token_mode" in
+    "无口令")
+      token=""
+      ;;
+    "自动生成")
+      token="$(random_token)"
+      ;;
+    "手动输入")
+      token="$(prompt "请输入手机登录口令。留空表示不使用口令。" "")"
+      cancel_if_needed "$token"
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
+
+  codex_app="$(prompt "Codex.app 路径。默认会自动寻找；如果你装在别处，可以在这里填写。" "$default_codex_app")"
+  cancel_if_needed "$codex_app"
+
+  printf '%s\n' "$token" > .remote-token
+  chmod 600 .remote-token
+
+  cat > .cmr-config <<EOF
 PORT=$port
 VNC_HOST=127.0.0.1
 VNC_PORT=5900
 CODEX_DESKTOP_APP=$(shell_quote "$codex_app")
 EOF
-chmod 600 .cmr-config
+  chmod 600 .cmr-config
+}
 
-progress_file="/tmp/codex-mobile-remote-app.log"
-{
-  echo "[$(date)] Installing dependencies..."
-  npm install
-  echo "[$(date)] Fixing script permissions..."
-  chmod +x install.sh scripts/*.sh
-  echo "[$(date)] Starting background service..."
-  ./scripts/start-background.sh
-} >"$progress_file" 2>&1 || {
-  dialog "启动失败。错误日志在：$progress_file"
-  /usr/bin/open -a Terminal "$progress_file" 2>/dev/null || true
+ensure_setup() {
+  if [ ! -f ".cmr-config" ] || [ ! -f ".remote-token" ]; then
+    setup_wizard
+    return
+  fi
+
+  choice="$(ask_continue "已经有本机配置。\n\n继续启动会使用现有端口和口令；重新设置可以修改端口、口令、Codex.app 路径。")"
+  case "$choice" in
+    "继续启动") ;;
+    "重新设置") setup_wizard ;;
+    *) exit 0 ;;
+  esac
+}
+
+install_dependencies_if_needed() {
+  if [ -d "node_modules" ]; then
+    return
+  fi
+  {
+    echo "[$(date)] Installing dependencies..."
+    npm install
+    echo "[$(date)] Fixing script permissions..."
+    chmod +x install.sh scripts/*.sh "$0"
+  } >"$log_file" 2>&1 || {
+    dialog "安装依赖失败。错误日志在：$log_file"
+    /usr/bin/open -a Terminal "$log_file" 2>/dev/null || true
+    exit 1
+  }
+}
+
+stop_existing_background_service() {
+  ./scripts/stop.sh >/dev/null 2>&1 || true
+}
+
+start_service() {
+  : > "$log_file"
+  ./scripts/run-server.sh >"$log_file" 2>&1 &
+  service_pid="$!"
+
+  local port deadline
+  port="$(read_config_value "PORT" "8088")"
+  deadline=$((SECONDS + 12))
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    if ! kill -0 "$service_pid" 2>/dev/null; then
+      dialog "服务启动失败。错误日志在：$log_file"
+      /usr/bin/open -a Terminal "$log_file" 2>/dev/null || true
+      exit 1
+    fi
+    if curl -fsS "http://127.0.0.1:$port/login" >/dev/null 2>&1 || curl -fsS "http://127.0.0.1:$port/" >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.4
+  done
+
+  dialog "服务启动超时。错误日志在：$log_file"
+  /usr/bin/open -a Terminal "$log_file" 2>/dev/null || true
   exit 1
 }
 
-mac_ip=""
-if command -v ipconfig >/dev/null 2>&1; then
-  mac_ip="$(ipconfig getifaddr en0 2>/dev/null || true)"
-  if [ -z "$mac_ip" ]; then
-    mac_ip="$(ipconfig getifaddr en1 2>/dev/null || true)"
+service_message() {
+  local port ip phone_url token_text
+  port="$(read_config_value "PORT" "8088")"
+  ip="$(mac_ip)"
+  if [ -n "$ip" ]; then
+    phone_url="http://$ip:$port"
+  else
+    phone_url="http://<你的Mac局域网IP>:$port"
   fi
-fi
 
-if [ -n "$mac_ip" ]; then
-  phone_url="http://$mac_ip:$port"
-else
-  phone_url="http://<你的Mac局域网IP>:$port"
-fi
+  if [ -f ".remote-token" ] && [ -s ".remote-token" ]; then
+    token_text="$(cat .remote-token)"
+  else
+    token_text="无口令，打开网页直接进入"
+  fi
 
-message="已经启动完成。
+  cat <<EOF
+服务正在运行。
 
 手机访问地址：
 $phone_url
 
-手机登录口令：
-$token
-
-本机打开：
+本机页面：
 http://localhost:$port
 
-如果人在外面，建议用 Tailscale IP 替换局域网 IP。"
+手机登录口令：
+$token_text
 
-choice="$(choose_open "$message")"
-if [ "$choice" = "打开本机页面" ]; then
-  /usr/bin/open "http://localhost:$port"
-fi
+关闭这个 App 窗口，或点击“停止并退出”，服务就会关闭。
+EOF
+}
+
+main_loop() {
+  local port picked
+  port="$(read_config_value "PORT" "8088")"
+  while true; do
+    picked="$(control_dialog "$(service_message)")"
+    case "$picked" in
+      "打开本机页面")
+        /usr/bin/open "http://localhost:$port"
+        ;;
+      "显示地址")
+        dialog "$(service_message)"
+        ;;
+      *)
+        exit 0
+        ;;
+    esac
+  done
+}
+
+ensure_project
+ensure_node
+ensure_setup
+install_dependencies_if_needed
+stop_existing_background_service
+start_service
+main_loop

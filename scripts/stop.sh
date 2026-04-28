@@ -4,6 +4,15 @@ set -euo pipefail
 session="codex-mobile-remote"
 pid_file="/tmp/codex-mobile-remote.pid"
 stopped=0
+port="${PORT:-8088}"
+
+cd "$(dirname "$0")/.."
+if [ -f ".cmr-config" ]; then
+  configured_port="$(sed -n 's/^PORT=//p' .cmr-config | head -n 1)"
+  if [ -n "$configured_port" ]; then
+    port="$configured_port"
+  fi
+fi
 
 if command -v tmux >/dev/null 2>&1 && tmux has-session -t "$session" 2>/dev/null; then
   tmux kill-session -t "$session"
@@ -26,6 +35,12 @@ if [ "$stopped" -eq 0 ]; then
 fi
 
 if command -v lsof >/dev/null 2>&1; then
+  service_pids="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null || true)"
+  if [ -n "$service_pids" ]; then
+    kill $service_pids 2>/dev/null || true
+    echo "Stopped codex-mobile-remote on 127.0.0.1:$port"
+  fi
+
   pids="$(lsof -tiTCP:18795 -sTCP:LISTEN 2>/dev/null || true)"
   if [ -n "$pids" ]; then
     kill $pids 2>/dev/null || true
