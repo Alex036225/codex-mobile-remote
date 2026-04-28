@@ -9,10 +9,23 @@ OUT_APP="$DIST_DIR/$APP_NAME"
 RESOURCES_DIR="$OUT_APP/Contents/Resources"
 PAYLOAD="$RESOURCES_DIR/codex-mobile-remote.tar.gz"
 ZIP_FILE="$DIST_DIR/Codex-Mobile-Remote.app.zip"
+SWIFT_LAUNCHER="$ROOT_DIR/src/macos/CodexMobileRemoteLauncher.swift"
 
 cd "$ROOT_DIR"
 mkdir -p "$DIST_DIR"
 rm -rf "$OUT_APP" "$ZIP_FILE"
+
+if ! command -v swiftc >/dev/null 2>&1; then
+  echo "swiftc not found. Please install Xcode Command Line Tools first." >&2
+  exit 1
+fi
+
+swiftc "$SWIFT_LAUNCHER" \
+  -framework AppKit \
+  -o "$SRC_APP/Contents/MacOS/codex-mobile-remote"
+chmod +x "$SRC_APP/Contents/MacOS/codex-mobile-remote"
+chmod +x "$SRC_APP/Contents/MacOS/codex-mobile-remote-runner"
+
 cp -R "$SRC_APP" "$OUT_APP"
 mkdir -p "$RESOURCES_DIR"
 
@@ -28,6 +41,7 @@ tar \
   -czf "$PAYLOAD" .
 
 chmod +x "$OUT_APP/Contents/MacOS/codex-mobile-remote"
+chmod +x "$OUT_APP/Contents/MacOS/codex-mobile-remote-runner"
 ditto -c -k --sequesterRsrc --keepParent "$OUT_APP" "$ZIP_FILE"
 
 echo "Built $OUT_APP"

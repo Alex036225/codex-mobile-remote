@@ -87,6 +87,7 @@ Codex Mobile Remote.app
 - `Codex.app` 路径确认
 - 自动安装依赖
 - 启动本地服务
+- 显示一个原生 macOS 窗口，左上角有关闭、最小化、最大化按钮
 
 之后每次使用：
 
@@ -168,10 +169,10 @@ Codex Mobile Remote.app
 
 ### 3. App 生命周期
 
-App 启动后会保持一个小窗口：
+App 启动后会保持一个原生 macOS 小窗口，左上角有熟悉的红黄绿窗口按钮：
 
 - 点“打开本机页面”：在 Mac 上打开 `http://localhost:8088`
-- 点“显示地址”：重新显示手机访问地址和口令状态
+- 点“复制手机地址”：把手机访问地址复制到剪贴板
 - 点“停止并退出”或关闭窗口：停止本地服务并退出 App
 
 也就是说，它不再是“启动一次就把服务丢到后台”的脚本，而是一个简单的服务开关。
@@ -363,11 +364,13 @@ CODEX_APP_SERVER_BIN='/path/to/codex'
 ./scripts/build-macos-app.sh
 ```
 
+这个步骤会编译原生 macOS 启动窗口，所以需要本机已经安装 Xcode Command Line Tools。
+
 它会生成：
 
 ```text
 dist/Codex Mobile Remote.app
-dist/Codex Mobile Remote.app.zip
+dist/Codex-Mobile-Remote.app.zip
 ```
 
 其中 zip 文件可以直接发给别人下载使用。
