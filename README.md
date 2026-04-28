@@ -11,16 +11,6 @@
 
 它不是独立的 Codex 客户端，而是一个运行在 **Mac 本机** 的桥接服务。
 
-## 效果图
-
-### 登录页
-
-![登录页](docs/images/mobile-login.png)
-
-### 手机聊天页
-
-![手机聊天页](docs/images/mobile-chat.png)
-
 ## 5 分钟快速上手
 
 ### 1. 克隆项目
@@ -126,7 +116,6 @@ codex-mobile-remote/
 ├── public/         手机网页前端
 ├── server/         本地桥接服务
 ├── scripts/        启停、OCR、点击、AppleScript 辅助脚本
-├── docs/images/    README 截图
 ├── install.sh      一键安装脚本
 ├── package.json
 └── README.md

@@ -64,6 +64,7 @@ messageList.addEventListener("scroll", () => {
 });
 fallbackToggleBtn.addEventListener("click", () => {
   fallbackPanel.hidden = !fallbackPanel.hidden;
+  fallbackToggleBtn.textContent = fallbackPanel.hidden ? "远程屏幕" : "收起远程屏幕";
 });
 focusCodexBtn.addEventListener("click", focusCodex);
 
@@ -273,7 +274,7 @@ function renderMessages(messages, stickToBottom = true) {
   if (!messages.length) {
     const empty = document.createElement("p");
     empty.className = "muted";
-    empty.textContent = "这个线程还没有可显示的消息。";
+    empty.textContent = "这个线程还没有可显示的消息。你可以直接在底部输入框继续这条对话。";
     messageList.appendChild(empty);
     return;
   }
