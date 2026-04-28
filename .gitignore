@@ -1,4 +1,5 @@
 node_modules/
 .remote-token
 .vnc-password
+.cmr-config
 .DS_Store

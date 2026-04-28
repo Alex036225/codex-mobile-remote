@@ -47,6 +47,9 @@ npm install
 
 log "修正脚本执行权限..."
 chmod +x "$ROOT_DIR/install.sh" "$ROOT_DIR"/scripts/*.sh
+if [ -f "$ROOT_DIR/Codex Mobile Remote.app/Contents/MacOS/codex-mobile-remote" ]; then
+  chmod +x "$ROOT_DIR/Codex Mobile Remote.app/Contents/MacOS/codex-mobile-remote"
+fi
 
 if [ ! -f "$ROOT_DIR/.remote-token" ]; then
   log "生成手机访问口令..."

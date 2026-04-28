@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server/index.js",
+    "start": "./scripts/run-server.sh",
     "dev": "node --watch server/index.js",
-    "check": "node server/index.js --check"
+    "check": "./scripts/run-server.sh --check"
   },
   "dependencies": {
     "@novnc/novnc": "1.4.0",
