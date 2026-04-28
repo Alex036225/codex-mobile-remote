@@ -44,6 +44,8 @@ let refreshTimer = null;
 let realtimePoll = null;
 let eventSource = null;
 let liveReload = null;
+let sendFollowTimer = null;
+let sendFollowDeadline = 0;
 let threadRequestSeq = 0;
 let lastError = "";
 let appServerStatusLabel = "App Server 已连接";
@@ -89,6 +91,16 @@ window.addEventListener("error", (event) => {
 
 window.addEventListener("unhandledrejection", (event) => {
   setStatus("offline", `请求失败：${event.reason?.message || event.reason || "未知错误"}`);
+});
+
+window.addEventListener("visibilitychange", () => {
+  if (!document.hidden && selectedThreadId) {
+    loadThread(selectedThreadId, { silent: true, forceBottom: followActiveThread || Boolean(sendFollowTimer) });
+  }
+});
+
+window.addEventListener("focus", () => {
+  if (selectedThreadId) loadThread(selectedThreadId, { silent: true, forceBottom: followActiveThread || Boolean(sendFollowTimer) });
 });
 
 await boot();
@@ -139,6 +151,7 @@ async function loadThread(threadId, options = {}) {
   const messages = response.messages || [];
   renderMessages(messages, shouldStickToBottom);
   followActiveThread = shouldStickToBottom && hasInProgressMessage(messages);
+  if (sendFollowTimer && hasAssistantAfterLastUser(messages)) stopSendFollow();
   if (!silent) setStatus("online", appServerStatusLabel);
   startRealtimePoll();
 }
@@ -177,9 +190,7 @@ async function sendMessage(event) {
     });
   }
 
-  scheduleThreadRefresh(900, true);
-  scheduleThreadRefresh(2500, true);
-  scheduleThreadRefresh(6000, true);
+  startSendFollow();
 }
 
 async function sendMessageToAppServer(message) {
@@ -225,6 +236,14 @@ function scheduleThreadRefresh(delay, forceBottom = false) {
   window.setTimeout(() => {
     if (selectedThreadId) loadThread(selectedThreadId, { forceBottom });
   }, delay);
+}
+
+function startSendFollow() {
+  sendFollowDeadline = Date.now() + 8 * 60 * 1000;
+  scheduleThreadRefresh(600, true);
+  scheduleThreadRefresh(1800, true);
+  scheduleThreadRefresh(4200, true);
+
   if (!refreshTimer) {
     refreshTimer = window.setInterval(() => {
       if (selectedThreadId) loadThread(selectedThreadId, { silent: true, forceBottom: followActiveThread });
@@ -234,6 +253,22 @@ function scheduleThreadRefresh(delay, forceBottom = false) {
       refreshTimer = null;
     }, 45000);
   }
+
+  if (sendFollowTimer) return;
+  sendFollowTimer = window.setInterval(() => {
+    if (!selectedThreadId || Date.now() > sendFollowDeadline) {
+      stopSendFollow();
+      return;
+    }
+    setStatus("connecting", "等待 Codex 回复");
+    loadThread(selectedThreadId, { silent: true, forceBottom: true });
+  }, 2500);
+}
+
+function stopSendFollow() {
+  window.clearInterval(sendFollowTimer);
+  sendFollowTimer = null;
+  sendFollowDeadline = 0;
 }
 
 function renderThreads() {
@@ -529,6 +564,12 @@ function isNearBottom(element) {
 
 function hasInProgressMessage(messages) {
   return messages.some((message) => message.status === "inProgress");
+}
+
+function hasAssistantAfterLastUser(messages) {
+  const lastUserIndex = messages.findLastIndex((message) => message.role === "user");
+  if (lastUserIndex === -1) return false;
+  return messages.slice(lastUserIndex + 1).some((message) => message.role === "assistant" && String(message.text || "").trim());
 }
 
 function setStatus(state, text) {
