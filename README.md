@@ -2,20 +2,95 @@
 
 这是一个给 **Codex Desktop** 配的手机网页伴侣。
 
-目标很直接：
+它的目标很简单：
 
-- 在手机上查看电脑里的 Codex 对话
+- 在手机上看电脑里的 Codex 对话
 - 在手机上继续发消息
-- 由电脑端实际执行
-- 必要时回退到远程屏幕查看
+- 实际执行仍然发生在你的 Mac 上
+- 真碰到结构化桥接不稳时，再退回远程屏幕兜底
 
 它不是独立的 Codex 客户端，而是一个运行在 **Mac 本机** 的桥接服务。
 
+## 效果图
+
+### 登录页
+
+![登录页](docs/images/mobile-login.png)
+
+### 手机聊天页
+
+![手机聊天页](docs/images/mobile-chat.png)
+
+## 5 分钟快速上手
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/Alex036225/codex-mobile-remote.git
+cd codex-mobile-remote
+```
+
+### 2. 一键安装
+
+```bash
+bash install.sh
+```
+
+这个脚本会帮你做几件事：
+
+- 检查是不是 macOS
+- 检查 Node.js 版本是不是 20+
+- 安装 npm 依赖
+- 修正脚本执行权限
+- 自动生成手机访问口令 `.remote-token`
+
+### 3. 启动服务
+
+前台启动：
+
+```bash
+npm start
+```
+
+后台启动：
+
+```bash
+./scripts/start-background.sh
+```
+
+### 4. 查看访问口令
+
+```bash
+cat .remote-token
+```
+
+### 5. 手机打开
+
+先在 Mac 上查局域网 IP：
+
+```bash
+ipconfig getifaddr en0
+```
+
+如果返回：
+
+```text
+192.168.0.116
+```
+
+那么手机访问：
+
+```text
+http://192.168.0.116:8088
+```
+
+注意：**不要在手机上访问 `http://localhost:8088`**，因为 `localhost` 指的是手机自己，不是你的 Mac。
+
 ## 适用场景
 
-- 你人在外面，想从手机继续电脑上的 Codex 工作
-- 你不想一直盯着 Mac 屏幕，但想快速发一条消息给 Codex
-- 你希望手机端优先显示聊天内容，远程屏幕只作为兜底
+- 人在外面，想从手机继续电脑上的 Codex 工作
+- 不想一直盯着 Mac 屏幕，但想快速给 Codex 发一条消息
+- 希望手机端优先显示聊天内容，远程屏幕只作为兜底
 
 ## 目前能力
 
@@ -37,11 +112,11 @@
 - macOS
 - 已安装 **Codex Desktop**
 - Node.js 20+
-- 同一局域网下手机可访问这台 Mac
+- 手机和这台 Mac 在同一局域网，或通过 Tailscale 连通
 
 可选但推荐：
 
-- `tmux`：后台常驻运行更方便
+- `tmux`：后台常驻更方便
 - `Tailscale`：外网访问更稳
 
 ## 项目结构
@@ -51,21 +126,32 @@ codex-mobile-remote/
 ├── public/         手机网页前端
 ├── server/         本地桥接服务
 ├── scripts/        启停、OCR、点击、AppleScript 辅助脚本
+├── docs/images/    README 截图
+├── install.sh      一键安装脚本
 ├── package.json
 └── README.md
 ```
 
 ## 安装
 
-在项目目录执行：
+### 方式一：推荐，直接用安装脚本
+
+```bash
+bash install.sh
+```
+
+### 方式二：手动安装
 
 ```bash
 npm install
+chmod +x scripts/*.sh
 ```
 
-## 启动
+启动后如果还没有 `.remote-token`，服务会自动生成。
 
-前台启动：
+## 启动方式
+
+### 前台启动
 
 ```bash
 npm start
@@ -77,23 +163,13 @@ npm start
 ./scripts/start.sh
 ```
 
-启动后默认监听：
+默认监听：
 
 ```text
 http://localhost:8088
 ```
 
-首次启动会自动生成：
-
-```text
-.remote-token
-```
-
-这个文件里的内容就是手机网页登录口令。
-
-## 后台运行
-
-推荐用内置脚本后台运行：
+### 后台启动
 
 ```bash
 ./scripts/start-background.sh
@@ -107,7 +183,7 @@ http://localhost:8088
 ./scripts/stop.sh
 ```
 
-检查当前状态：
+查看状态：
 
 ```bash
 ./scripts/status.sh
@@ -123,24 +199,13 @@ http://localhost:8088
 ipconfig getifaddr en0
 ```
 
-假设返回：
+### 2. 手机打开服务地址
 
 ```text
-192.168.0.116
+http://<你的Mac局域网IP>:8088
 ```
 
-那么手机访问：
-
-```text
-http://192.168.0.116:8088
-```
-
-注意：
-
-- **不要**在手机上访问 `http://localhost:8088`
-- `localhost` 指向的是手机自己，不是你的 Mac
-
-### 2. 输入网页登录口令
+### 3. 输入网页登录口令
 
 口令保存在项目根目录：
 
@@ -168,28 +233,25 @@ http://<tailscale-ip>:8088
 
 ## 如果要启用远程屏幕
 
-本项目保留了 noVNC 兜底，所以如果你想在手机上看桌面屏幕，需要先开启 macOS 的屏幕共享。
+本项目保留了 noVNC 兜底。如果你想在手机上直接看 Mac 屏幕，需要先开启 macOS 屏幕共享。
 
-打开：
+打开路径：
 
 ```text
 系统设置 -> 通用 -> 共享 -> 屏幕共享
 ```
 
-然后：
+建议同时设置：
 
 - 开启 `Screen Sharing`
 - 给当前 macOS 用户控制权限
-
-如果你想让 VNC 密码登录更稳定，建议启用：
-
-- Legacy VNC / VNC viewer password
+- 如果你想让 VNC 密码登录更稳定，启用 Legacy VNC / VNC viewer password
 
 ## Codex Desktop 相关说明
 
-这个项目的核心难点，不是普通聊天，而是尽量接近 **真实 Codex Desktop 正在使用的线程**。
+这个项目最难的部分，不是普通聊天，而是尽量接近 **真实 Codex Desktop 正在使用的线程**。
 
-因此项目里做了几层兼容：
+因此项目做了多层兼容：
 
 ### 1. Desktop control socket
 
@@ -203,11 +265,11 @@ http://<tailscale-ip>:8088
 
 ### 2. 本地 app-server
 
-如果真实 control socket 不可用，会退回到本地 bridge 自己启动的 app-server。
+如果真实 control socket 不可用，会退回到 bridge 自己接的本地 app-server。
 
 ### 3. Desktop CDP / UI 同步
 
-如果只是底层线程更新了，但桌面 UI 没及时显示，就会通过 Codex Desktop 的调试桥补同步。
+如果底层线程更新了，但桌面 UI 没及时显示，就会通过 Codex Desktop 的调试桥补同步。
 
 这个模式依赖：
 
@@ -215,7 +277,7 @@ http://<tailscale-ip>:8088
 --remote-debugging-port=9222
 ```
 
-通常桥会尽量自动处理，但如果你需要手动启动调试模式，可以执行：
+如果你需要手动启动调试模式，可以执行：
 
 ```bash
 open -na /Applications/Codex.app --args --remote-debugging-port=9222
@@ -252,7 +314,7 @@ FORCE_VNC_PASSWORD_AUTH=1
 CODEX_DESKTOP_SEND_FALLBACK=1
 ```
 
-## 常用操作
+## 常用命令
 
 ### 启动服务
 
@@ -260,10 +322,10 @@ CODEX_DESKTOP_SEND_FALLBACK=1
 npm start
 ```
 
-### 手机访问
+### 后台启动
 
-```text
-http://<你的Mac局域网IP>:8088
+```bash
+./scripts/start-background.sh
 ```
 
 ### 查看状态
@@ -276,6 +338,12 @@ http://<你的Mac局域网IP>:8088
 
 ```bash
 ./scripts/stop.sh
+```
+
+### 查看访问口令
+
+```bash
+cat .remote-token
 ```
 
 ## 常见问题
@@ -291,12 +359,12 @@ http://<你的Mac局域网IP>:8088
 
 ### 2. 手机能打开，但发消息后电脑端没变化
 
-这通常不是手机问题，而是 Desktop 线程同步层没有接上。
+这通常不是手机问题，而是 Desktop 线程同步层没有完全接上。
 
 可以先确认：
 
 - Codex Desktop 当前是否正常打开
-- 线程名是否存在
+- 目标线程是否存在
 - 是否允许桥接服务访问 Desktop
 
 ### 3. 为什么手机上看到的和电脑端画面不完全一样
@@ -306,13 +374,13 @@ http://<你的Mac局域网IP>:8088
 - 线程消息内容正确
 - 手机可继续发消息
 
-桌面 UI 的实时完全镜像，是更难的一层，目前是通过补同步来尽量靠近。
+桌面 UI 的实时完全镜像，是更难的一层，目前通过补同步尽量靠近。
 
 ### 4. 为什么要保留 VNC
 
 因为结构化线程桥不一定覆盖所有 Desktop UI 状态。
 
-VNC 是兜底：
+VNC 的作用是兜底：
 
 - 看屏幕
 - 确认当前窗口
@@ -363,4 +431,3 @@ npm run check
 - 能接受这是一个偏工程化、偏私有化的桥接工具
 
 如果你想要一个完全正式、稳定、跨版本保证一致的官方手机客户端，这个项目不是那个方向。
-
