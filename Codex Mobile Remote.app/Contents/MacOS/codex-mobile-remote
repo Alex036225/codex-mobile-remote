@@ -69,6 +69,14 @@ if [ -f ".cmr-config" ]; then
   fi
 fi
 
+default_codex_app="/Applications/Codex.app"
+if [ -f ".cmr-config" ]; then
+  existing_codex_app="$(sed -n 's/^CODEX_DESKTOP_APP=//p' .cmr-config | head -n 1 | sed \"s/^'//; s/'$//\")"
+  if [ -n "$existing_codex_app" ]; then
+    default_codex_app="$existing_codex_app"
+  fi
+fi
+
 port="$(prompt "手机网页端口。一般保持默认 8088 即可。" "$default_port")"
 cancel_if_needed "$port"
 if ! [[ "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
@@ -87,6 +95,13 @@ if [ -z "$token" ]; then
   token="$(node --input-type=module -e 'import crypto from "node:crypto"; console.log(crypto.randomBytes(18).toString("base64url"))')"
 fi
 
+codex_app="$(prompt "Codex.app 路径。默认会自动寻找；如果你装在别处，可以在这里填写。" "$default_codex_app")"
+cancel_if_needed "$codex_app"
+
+shell_quote() {
+  printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
+}
+
 printf '%s\n' "$token" > .remote-token
 chmod 600 .remote-token
 
@@ -94,6 +109,7 @@ cat > .cmr-config <<EOF
 PORT=$port
 VNC_HOST=127.0.0.1
 VNC_PORT=5900
+CODEX_DESKTOP_APP=$(shell_quote "$codex_app")
 EOF
 chmod 600 .cmr-config
 

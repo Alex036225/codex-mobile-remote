@@ -77,6 +77,7 @@ chmod +x codex-mobile-remote.sh
 - 让用户手动输入安装目录
 - 让用户手动输入手机网页端口
 - 让用户手动输入手机登录口令，或者留空自动生成
+- 让用户确认或手动输入 `Codex.app` 路径
 - 启动后台服务
 - 输出手机访问地址和登录口令
 
@@ -116,6 +117,7 @@ Codex Mobile Remote.app
 - 安装项目依赖
 - 让你自己输入手机网页端口
 - 让你自己输入手机登录口令，或者留空自动生成
+- 让你确认或手动输入 `Codex.app` 路径
 - 启动后台服务
 - 弹出手机访问地址和登录口令
 
@@ -239,6 +241,40 @@ chmod +x scripts/*.sh
 ```
 
 启动后如果还没有 `.remote-token`，服务会自动生成。
+
+## 路径可以自动找，也可以手动指定
+
+不同人的 Codex Desktop 安装位置可能不一样，所以项目不会只依赖一个固定路径。
+
+目前会按这个顺序寻找：
+
+- 你在安装脚本或 App 里手动输入的 `Codex.app` 路径
+- 环境变量 `CODEX_DESKTOP_APP`
+- `/Applications/Codex.app`
+- `~/Applications/Codex.app`
+- macOS Spotlight 能找到的 `Codex.app`
+- `PATH` 里的 `codex` 命令
+
+如果你想手动改配置，可以编辑安装目录里的：
+
+```text
+.cmr-config
+```
+
+示例：
+
+```bash
+PORT=8088
+VNC_HOST=127.0.0.1
+VNC_PORT=5900
+CODEX_DESKTOP_APP='/Applications/Codex.app'
+```
+
+如果你有单独的 `codex` 可执行文件路径，也可以加：
+
+```bash
+CODEX_APP_SERVER_BIN='/path/to/codex'
+```
 
 ## 重新生成单文件脚本
 

@@ -5,9 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import readline from "node:readline";
 import WebSocket from "ws";
+import { findCodexBinary } from "./codex-paths.js";
 
 const DEFAULT_URL = "ws://127.0.0.1:18795";
-const DESKTOP_CODEX_BINARY = "/Applications/Codex.app/Contents/Resources/codex";
 const DEFAULT_CONTROL_SOCKET = path.join(os.homedir(), ".codex", "app-server-control", "app-server-control.sock");
 
 export class CodexAppServerClient {
@@ -443,7 +443,7 @@ export class CodexAppServerClient {
 }
 
 function getDefaultCodexBinary() {
-  return fs.existsSync(DESKTOP_CODEX_BINARY) ? DESKTOP_CODEX_BINARY : "codex";
+  return findCodexBinary();
 }
 
 export function flattenThreadMessages(thread) {

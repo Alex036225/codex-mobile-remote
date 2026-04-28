@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import WebSocket from "ws";
+import { findCodexLaunchTarget } from "./codex-paths.js";
 
 const DEFAULT_CDP_URL = "http://127.0.0.1:9222";
-const CODEX_APP = "/Applications/Codex.app";
 
 export class CodexDesktopCdp {
   constructor({ baseUrl = process.env.CODEX_DESKTOP_CDP_URL || DEFAULT_CDP_URL } = {}) {
@@ -75,7 +75,11 @@ export class CodexDesktopCdp {
   }
 
   async launch() {
-    spawn("/usr/bin/open", ["-na", CODEX_APP, "--args", "--remote-debugging-port=9222"], {
+    const target = findCodexLaunchTarget();
+    const args = target.endsWith(".app") || target.startsWith("/")
+      ? ["-n", target, "--args", "--remote-debugging-port=9222"]
+      : ["-na", target, "--args", "--remote-debugging-port=9222"];
+    spawn("/usr/bin/open", args, {
       detached: true,
       stdio: "ignore"
     }).unref();

@@ -34,8 +34,8 @@ if [ "$node_major" -lt 20 ]; then
   fail "当前 Node.js 版本过低：$(node -v)。请升级到 Node.js 20 或更高版本。"
 fi
 
-if [ ! -d "/Applications/Codex.app" ]; then
-  warn "没有在 /Applications 里找到 Codex.app。只要你本机已经装了 Codex Desktop，且能正常启动，也可以继续。"
+if [ ! -d "${CODEX_DESKTOP_APP:-/Applications/Codex.app}" ] && ! command -v codex >/dev/null 2>&1; then
+  warn "没有在默认位置找到 Codex.app，也没有在 PATH 里找到 codex。只要你后面通过 CODEX_DESKTOP_APP 或 CODEX_APP_SERVER_BIN 指定路径，也可以继续。"
 fi
 
 if ! command -v tmux >/dev/null 2>&1; then

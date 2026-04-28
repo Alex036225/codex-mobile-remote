@@ -119,6 +119,13 @@ if [ -z "$token" ]; then
   token="$(random_token)"
 fi
 
+codex_app="$(prompt "Codex.app 路径，默认会自动寻找" "/Applications/Codex.app")"
+echo
+
+shell_quote() {
+  printf "'%s'" "$(printf "%s" "$1" | sed "s/'/'\\\\''/g")"
+}
+
 say "释放项目到：$install_dir"
 extract_payload "$install_dir"
 cd "$install_dir"
@@ -130,6 +137,7 @@ cat > .cmr-config <<EOF
 PORT=$port
 VNC_HOST=127.0.0.1
 VNC_PORT=5900
+CODEX_DESKTOP_APP=$(shell_quote "$codex_app")
 EOF
 chmod 600 .cmr-config
 

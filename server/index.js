@@ -9,6 +9,7 @@ import express from "express";
 import { WebSocketServer } from "ws";
 import { CodexAppServerClient, flattenThreadMessages } from "./codex-app-server.js";
 import { CodexDesktopCdp } from "./codex-desktop-cdp.js";
+import { findCodexLaunchTarget } from "./codex-paths.js";
 import { readSessionBackedThread } from "./codex-session-store.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -166,7 +167,9 @@ app.get("/api/config", requireAuth, (_req, res) => {
 });
 
 app.post("/api/focus-codex", requireAuth, (_req, res) => {
-  execFile("/usr/bin/open", ["-a", "Codex"], (openError) => {
+  const target = findCodexLaunchTarget();
+  const openArgs = target.endsWith(".app") || target.startsWith("/") ? [target] : ["-a", target];
+  execFile("/usr/bin/open", openArgs, (openError) => {
     if (openError) return res.status(500).json({ ok: false, error: openError.message });
     execFile("/usr/bin/osascript", ["-e", 'tell application "Codex" to activate'], (activateError) => {
       if (activateError) return res.json({ ok: true, warning: activateError.message });
