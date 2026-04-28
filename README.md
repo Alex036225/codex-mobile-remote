@@ -59,7 +59,13 @@
 如果你想把它当成一个普通 macOS 小软件用，下载：
 
 ```text
-dist/Codex Mobile Remote.app.zip
+GitHub Releases -> Codex.Mobile.Remote.app.zip
+```
+
+最新版本下载页：
+
+```text
+https://github.com/Alex036225/codex-mobile-remote/releases/latest
 ```
 
 解压后双击：
@@ -94,7 +100,7 @@ Codex Mobile Remote.app
 如果你只想给别人一个 shell 文件，也可以使用：
 
 ```text
-dist/codex-mobile-remote.sh
+GitHub Releases -> codex-mobile-remote.sh
 ```
 
 运行方式：
