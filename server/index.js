@@ -37,6 +37,14 @@ app.use(express.urlencoded({ extended: false }));
 
 const accessToken = getAccessToken();
 
+app.use((req, res, next) => {
+  if (req.path.endsWith(".html") || req.path.endsWith(".css") || req.path.endsWith(".js")) {
+    res.setHeader("Cache-Control", "no-store");
+  }
+  next();
+});
+app.use("/styles", express.static(path.join(publicDir, "styles")));
+
 if (process.argv.includes("--check")) {
   const status = await collectStatus();
   console.log(JSON.stringify({ port, vncHost, vncPort, status }, null, 2));
@@ -266,13 +274,6 @@ app.get("/api/codex/snapshot", requireAuth, async (_req, res) => {
   const ocr = await captureCodexOcr();
   if (ocr.ok) return res.json({ ok: true, source: "ocr", text: ocr.text, axText });
   res.json({ ok: true, source: "accessibility", text: axText, raw: result.stdout, ocrError: ocr.error });
-});
-
-app.use((req, res, next) => {
-  if (req.path.endsWith(".html") || req.path.endsWith(".css") || req.path.endsWith(".js")) {
-    res.setHeader("Cache-Control", "no-store");
-  }
-  next();
 });
 
 app.use("/vendor/novnc", requireAuth, express.static(path.join(rootDir, "node_modules", "@novnc", "novnc")));
