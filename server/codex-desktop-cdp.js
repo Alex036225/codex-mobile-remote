@@ -699,19 +699,34 @@ function syncThreadViewScript(threadId, threadName, expectedSnippet) {
         firstTurnWorkItemStartedAtMs: null
       });
 
+      const remoteTurns = (thread.turns || []).map(normalizeTurn);
+      const remoteById = new Map(remoteTurns.map((turn) => [turn.turnId, turn]));
       const existingIds = new Set((current.turns || []).map((turn) => turn.turnId));
-      const missingTurns = (thread.turns || []).filter((turn) => !existingIds.has(turn.id)).map(normalizeTurn);
-      const nextConversation = missingTurns.length
+      const missingTurns = remoteTurns.filter((turn) => !existingIds.has(turn.turnId));
+      let changedTurns = 0;
+      const refreshedTurns = (current.turns || []).map((turn) => {
+        const remote = remoteById.get(turn.turnId);
+        if (!remote) return turn;
+        const currentItems = turn.items?.length || 0;
+        const remoteItems = remote.items?.length || 0;
+        const shouldReplace = remote.status !== turn.status
+          || remoteItems > currentItems
+          || (!turn.finalAssistantStartedAtMs && remote.finalAssistantStartedAtMs);
+        if (!shouldReplace) return turn;
+        changedTurns += 1;
+        return { ...turn, ...remote };
+      });
+      const nextConversation = (missingTurns.length || changedTurns)
         ? {
             ...current,
-            turns: [...current.turns, ...missingTurns],
+            turns: [...refreshedTurns, ...missingTurns],
             updatedAt: thread.updatedAt ? thread.updatedAt * 1000 : current.updatedAt,
             hasUnreadTurn: true,
             threadRuntimeStatus: thread.status || current.threadRuntimeStatus
           }
         : current;
 
-      if (missingTurns.length) {
+      if (missingTurns.length || changedTurns) {
         store.conversations.set(threadId, nextConversation);
       }
 
@@ -753,7 +768,8 @@ function syncThreadViewScript(threadId, threadName, expectedSnippet) {
         ok: true,
         turnCount,
         lastTurnId,
-        missingTurns: missingTurns.length
+        missingTurns: missingTurns.length,
+        changedTurns
       };
     };
 
