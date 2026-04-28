@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111827">
+    <title>Codex Mobile Companion</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="stylesheet" href="/styles/app.css?v=5">
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <header class="topbar">
+        <button id="menuBtn" class="icon-button" type="button" aria-label="打开线程列表">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div>
+          <p class="eyebrow">Codex Mobile Companion</p>
+          <h1>Codex Desktop</h1>
+        </div>
+        <div class="status-cluster">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText">检查中</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <button id="drawerBackdrop" class="drawer-backdrop" type="button" aria-label="关闭线程列表" hidden></button>
+        <aside class="thread-pane" aria-label="Codex 线程">
+          <div class="pane-toolbar">
+            <button id="closeThreadsBtn" class="drawer-close" type="button">关闭</button>
+            <button id="newThreadBtn" class="primary">新线程</button>
+            <button id="refreshThreadsBtn">刷新</button>
+          </div>
+          <label class="search-row">
+            <span>搜索线程</span>
+            <input id="threadSearch" type="search" placeholder="项目名、标题或首条消息">
+          </label>
+          <div id="threadList" class="thread-list"></div>
+        </aside>
+
+        <section class="chat-pane" aria-label="Codex 对话">
+          <div class="chat-titlebar">
+            <div>
+              <p id="threadMeta" class="eyebrow">App Server</p>
+              <h2 id="threadTitle">选择一个线程</h2>
+            </div>
+            <div class="title-actions">
+              <button id="readThreadBtn">读取</button>
+              <button id="fallbackToggleBtn">远程屏幕</button>
+            </div>
+          </div>
+
+          <div id="messageList" class="message-list">
+            <p class="muted">左侧选择 Codex App 线程后，这里会显示结构化文本消息。</p>
+          </div>
+
+          <form id="composerForm" class="composer">
+            <textarea id="messageInput" rows="1" placeholder="发送消息"></textarea>
+            <div class="composer-actions">
+              <button id="focusCodexBtn" type="button">聚焦 Codex</button>
+              <button id="sendMessageBtn" class="primary" type="submit">发送</button>
+            </div>
+          </form>
+        </section>
+      </main>
+
+      <section id="fallbackPanel" class="fallback-panel" hidden>
+        <div class="fallback-header">
+          <div>
+            <p class="eyebrow">Fallback</p>
+            <h2>远程屏幕兜底</h2>
+          </div>
+          <div class="button-row compact">
+            <button id="connectBtn" class="primary">连接</button>
+            <button id="disconnectBtn">断开</button>
+          </div>
+        </div>
+
+        <div class="remote-layout">
+          <section class="remote-stage" aria-label="远程桌面">
+            <div id="screen" class="screen"></div>
+            <div id="emptyState" class="empty-state">
+              <strong>等待连接</strong>
+              <span id="emptyHint">点击连接后会显示当前 Mac 桌面。</span>
+              <button id="emptyConnectBtn" class="primary">连接 Mac</button>
+            </div>
+          </section>
+
+          <aside class="control-panel">
+            <button id="refreshBtn">刷新状态</button>
+
+            <label class="field-row">
+              <span>用户名</span>
+              <input id="vncUsername" type="text" autocomplete="username" placeholder="需要账号登录时填写">
+            </label>
+
+            <label class="field-row">
+              <span>VNC 密码</span>
+              <input id="vncPassword" type="password" autocomplete="current-password" placeholder="独立 Legacy VNC 密码">
+            </label>
+
+            <label class="field-row">
+              <span>Mac 登录密码</span>
+              <input id="macLoginPassword" type="password" autocomplete="off" placeholder="只发送到远程锁屏">
+            </label>
+
+            <div class="button-row">
+              <button id="unlockMacBtn" class="primary">解锁 Mac</button>
+              <button data-key="Tab">Tab</button>
+            </div>
+
+            <label class="send-box">
+              <span>发送文本到当前焦点</span>
+              <textarea id="textToSend" rows="3" placeholder="在手机这里输入，再发送到 Mac"></textarea>
+            </label>
+
+            <div class="button-row">
+              <button data-key="Enter">Enter</button>
+              <button data-key="Escape">Esc</button>
+              <button data-combo="MetaLeft+KeyV">Paste</button>
+              <button id="sendTextBtn" class="primary">发送文本</button>
+            </div>
+
+            <div class="shortcut-grid">
+              <button data-combo="MetaLeft+Space">Spotlight</button>
+              <button data-combo="MetaLeft+Tab">切 App</button>
+              <button data-combo="MetaLeft+KeyW">关窗口</button>
+              <button data-combo="MetaLeft+KeyQ">退出 App</button>
+              <button data-combo="MetaLeft+KeyC">复制</button>
+              <button data-combo="MetaLeft+KeyA">全选</button>
+            </div>
+
+            <pre id="statusDetails" class="status-details"></pre>
+          </aside>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      if (location.protocol === "file:") {
+        document.body.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#101318;color:#f6f7f9;font:16px system-ui;padding:24px;text-align:center"><div><h1 style="margin:0 0 12px;font-size:24px">打开方式不对</h1><p style="color:#a8b0bd;line-height:1.6">这个页面需要通过本机服务访问，不能直接打开 HTML 文件。<br>请打开 <strong style="color:#27c3ab">http://100.127.234.52:8088</strong></p></div></main>';
+      } else {
+        const script = document.createElement("script");
+        script.type = "module";
+        script.src = "/scripts/app.js?v=5";
+        document.body.appendChild(script);
+      }
+    </script>
+  </body>
+</html>

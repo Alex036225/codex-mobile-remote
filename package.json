@@ -1,0 +1,16 @@
+{
+  "name": "codex-mobile-remote",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "check": "node server/index.js --check"
+  },
+  "dependencies": {
+    "@novnc/novnc": "1.4.0",
+    "express": "^5.2.1",
+    "ws": "^8.20.0"
+  }
+}

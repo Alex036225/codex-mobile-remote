@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Codex Mobile Remote</title>
+    <link rel="stylesheet" href="/styles/app.css">
+  </head>
+  <body class="login-body">
+    <main class="login-panel">
+      <div>
+        <p class="eyebrow">Private Control</p>
+        <h1>Codex Mobile Remote</h1>
+        <p class="muted">输入这台 Mac 本地生成的访问口令。</p>
+      </div>
+
+      <form id="loginForm" class="login-form">
+        <label>
+          <span>访问口令</span>
+          <input id="token" name="token" type="password" autocomplete="current-password" autofocus>
+        </label>
+        <button type="submit">进入远控</button>
+        <p id="error" class="error" hidden></p>
+      </form>
+    </main>
+    <script>
+      const form = document.querySelector("#loginForm");
+      const error = document.querySelector("#error");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        error.hidden = true;
+        const response = await fetch("/api/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token: document.querySelector("#token").value })
+        });
+        if (response.ok) {
+          location.href = "/";
+          return;
+        }
+        error.textContent = "口令不对，再试一次。";
+        error.hidden = false;
+      });
+    </script>
+  </body>
+</html>
