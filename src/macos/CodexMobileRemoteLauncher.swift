@@ -152,12 +152,12 @@ final class LauncherController: NSObject, NSApplicationDelegate, NSWindowDelegat
         let bundleURL = Bundle.main.bundleURL
         let runnerURL = bundleURL
             .appendingPathComponent("Contents")
-            .appendingPathComponent("MacOS")
+            .appendingPathComponent("Resources")
             .appendingPathComponent("codex-mobile-remote-runner")
 
         let process = Process()
-        process.executableURL = runnerURL
-        process.arguments = ["--native-runner"]
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [runnerURL.path, "--native-runner"]
 
         let stdout = Pipe()
         let stderr = Pipe()
